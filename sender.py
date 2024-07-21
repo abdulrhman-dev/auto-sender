@@ -5,34 +5,30 @@ import pywhatkit as wa
 import random
 
 
-with open('./data/message.txt', 'r') as f:
+with open('./data/message.txt', 'r', encoding='utf-8') as f:
     unparsed_message = f.read()
 
 
 def apply_row(row: pd.Series):
     message = unparsed_message
-    shift_value = 0
 
     for match in re.finditer(r'{{\s*(?P<column_name>\w+)\s*}}', unparsed_message):
         match_groups = match.groupdict()
         start_index, end_index = match.span()
         value = row[match_groups['column_name']]
-        before_value_slice = slice(None, start_index + shift_value)
-        after_value_slice = slice(end_index + shift_value, -1)
-        message = message[before_value_slice] + \
-            value + message[after_value_slice]
-        shift_value += len(value) - len(match.group(0))
+        message = message.replace(match.group(0), value, 1)
 
     return message
 
 
-df = pd.read_excel('./phones.xlsx')
+df = pd.read_excel('./data/phones.xlsx')
 
 
 for index, row in df.iterrows():
-    wait_time = random.randrange(6, 20)
-    row['Shop'] = "Al Abood Shop"
+    wait_time = random.randrange(15, 25)
     message = apply_row(row)
-    wa.sendwhatmsg_instantly(
-        '+' + str(row['Phone']), message, wait_time, True, 1)
+    print(message)
+    if(not str(row['Phone']).startswith('+')):
+        row['Phone'] = '+' + str(row['Phone'])
+    wa.sendwhatmsg_instantly(str(row['Phone']), message, wait_time, True, 5)
     print(f'Sent Message Successfully')
