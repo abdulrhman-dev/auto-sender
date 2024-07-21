@@ -164,3 +164,4 @@ cython_debug/
 data
 pyvenv.cfg
 PyWhatKit_DB.txt
+archive
