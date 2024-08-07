@@ -1,31 +1,110 @@
 import pandas as pd
+import numpy as np
+import mysql.connector
+from sqlalchemy import create_engine, types
+from os import getenv
+from dotenv import load_dotenv
 
-with open('./data/selected_phones.txt', 'r') as f:
-    phones = f.read().split('\n')
+load_dotenv()
 
-df = pd.read_excel('./data/202407-08_alserag_data_analysis.xlsx')
-print(phones)
-working_df = df.loc[df['WhatsApp_url_1'].isin(
-    phones), ['WhatsApp_url_1', 'Cust_name', 'Cust_title']]
+# engine = create_engine(getenv('SAVE_CON'))
+
+# customers_df = pd.read_sql('SELECT * FROM workdb.customers', engine)
+# invoices_df = pd.read_sql('SELECT * FROM workdb.invoices', engine)
+
+# merged_df = pd.merge(customers_df, invoices_df, left_on='CUS_NO',
+#                      right_on='INV_CUS_NO', how='left')
+
+# merged_df['MONTH'] = merged_df['INV_TIME'].dt.month
+# merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
 
 
-working_df['Phone'] = working_df['WhatsApp_url_1'].str.replace(
-    'https://wa.me/', '+')
-working_df['Cust_title'] = working_df['Cust_title'].str.replace(
-    r'\s+', '', regex=True)
-working_df.drop('WhatsApp_url_1', axis=1, inplace=True)
+# mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
+#     'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
+# df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
 
-is_adult = ~working_df['Cust_title'].isin(
-    ['الطفل', 'الطفلة'])
 
-working_df.loc[is_adult, 'Cust_name'] = working_df.loc[is_adult,
-                                                       'Cust_name'].str.split(' ').str[0]
-working_df.loc[~is_adult, 'Cust_name'] = working_df.loc[~is_adult,
-                                                        'Cust_name'].str.split(' ').str[1]
+# SELECTED_COLUMNS = ['INV_TIME', 'MONTH', 'YEAR', 'CUS_TITLE', 'CUS_NAME', 'CUS_JOB',
+#                     'CUS_GENDER', 'CUS_AGE', 'CUS_MOBILE_1', 'CUS_MOBILE_2', 'CUS_MOBILE_3']
 
-working_df['Cust_title_1'] = working_df['Cust_title'].replace(
-    {'السيد': 'الأستاذ', 'السيدة': 'الأستاذة', 'الطفل':'الأستاذ', 'الطفلة':'الأستاذ'})
-working_df['Cust_title_2'] = working_df['Cust_title_1'].str.contains('ة').map({True:'عميلتنا المحترمة', False:'عميلنا المحترم'})
-working_df['Cust_title_1'] = working_df['Cust_title_1'].str.replace('ال', '')
-working_df.drop('Cust_title', axis=1, inplace=True)
-working_df.to_excel('./data/phones.xlsx', index=False)
+# new_customers_df = merged_df[df_mask].loc[:, SELECTED_COLUMNS].copy()
+new_customers_df = pd.read_excel('./data/TEST_CUSTOMER.xlsx')
+new_customers_df.drop_duplicates(
+    subset=['YEAR', 'MONTH', 'CUS_MOBILE_1'], keep='first', inplace=True)
+
+
+new_customers_df['WHATSAPP_EXISTS'] = False
+new_customers_df['SEND_DATE'] = np.nan
+
+new_customers_df['SEND_DATE'] = pd.to_datetime(new_customers_df['SEND_DATE'])
+new_customers_df['CUS_AGE'] = new_customers_df['CUS_AGE'].replace(
+    '', np.nan).astype(float)
+
+
+conn = mysql.connector.connect(
+    user=getenv('USER'),
+    password=getenv('PASSWORD'),
+    host=getenv('HOST')
+)
+
+
+cursor = conn.cursor()
+
+cursor.execute('CREATE DATABASE IF NOT EXISTS phonedb')
+conn.database = 'phonedb'
+
+cursor.execute(
+    """CREATE TABLE IF NOT EXISTS customer_phones (
+        INV_TIME TIMESTAMP,
+        MONTH INTEGER,
+        YEAR INTEGER,
+        CUS_TITLE VARCHAR(255),
+        CUS_NAME VARCHAR(255),
+        CUS_JOB VARCHAR(255),
+        CUS_GENDER VARCHAR(255),
+        CUS_AGE FLOAT,
+        CUS_MOBILE_1 VARCHAR(255),
+        CUS_MOBILE_2 VARCHAR(255),
+        CUS_MOBILE_3 VARCHAR(255),
+        WHATSAPP_EXISTS INTEGER,
+        SEND_DATE TIMESTAMP
+    )"""
+)
+
+conn.commit()
+cursor.close()
+conn.close()
+
+phone_engine = create_engine(getenv('PHONE_CON'))
+
+saved_df = pd.read_sql('SELECT * FROM phonedb.customer_phones', phone_engine)
+
+
+df = pd.concat([saved_df, new_customers_df])
+
+df['CUS_MOBILE_1'] = pd.to_numeric(df['CUS_MOBILE_1'])
+df['YEAR'] = pd.to_numeric(df['YEAR'])
+df['MONTH'] = pd.to_numeric(df['MONTH'])
+
+df.drop_duplicates(
+    subset=['YEAR', 'MONTH', 'CUS_MOBILE_1'], keep=False, inplace=True)
+df.sort_values(by=['INV_TIME'], ascending=True, inplace=True)
+
+dtype = {
+    'INV_TIME': types.TIMESTAMP,
+    'MONTH': types.INTEGER,
+    'YEAR': types.INTEGER,
+    'CUS_TITLE': types.VARCHAR(255),
+    'CUS_NAME': types.VARCHAR(255),
+    'CUS_JOB': types.VARCHAR(255),
+    'CUS_GENDER': types.VARCHAR(255),
+    'CUS_AGE': types.FLOAT,
+    'CUS_MOBILE_1': types.VARCHAR(255),
+    'CUS_MOBILE_2': types.VARCHAR(255),
+    'CUS_MOBILE_3': types.VARCHAR(255),
+    'WHATSAPP_EXISTS': types.INTEGER,
+    'SEND_DATE': types.TIMESTAMP
+}
+
+df.to_sql('customer_phones', phone_engine,
+          if_exists='append', dtype=dtype, index=False)
