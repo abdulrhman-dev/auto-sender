@@ -7,34 +7,49 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# engine = create_engine(getenv('SAVE_CON'))
+engine = create_engine(getenv('SAVE_CON'))
 
-# customers_df = pd.read_sql('SELECT * FROM workdb.customers', engine)
-# invoices_df = pd.read_sql('SELECT * FROM workdb.invoices', engine)
+customers_df = pd.read_sql('SELECT * FROM workdb.customers', engine)
+invoices_df = pd.read_sql('SELECT * FROM workdb.invoices', engine)
 
-# merged_df = pd.merge(customers_df, invoices_df, left_on='CUS_NO',
-#                      right_on='INV_CUS_NO', how='left')
+merged_df = pd.merge(customers_df, invoices_df, left_on='CUS_NO',
+                     right_on='INV_CUS_NO', how='left')
 
-# merged_df['MONTH'] = merged_df['INV_TIME'].dt.month
-# merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
-
-
-# mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
-#     'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
-# df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
+merged_df['MONTH'] = merged_df['INV_TIME'].dt.month
+merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
 
 
-# SELECTED_COLUMNS = ['INV_TIME', 'MONTH', 'YEAR', 'CUS_TITLE', 'CUS_NAME', 'CUS_JOB',
-#                     'CUS_GENDER', 'CUS_AGE', 'CUS_MOBILE_1', 'CUS_MOBILE_2', 'CUS_MOBILE_3']
+mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
+    'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
+df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
 
-# new_customers_df = merged_df[df_mask].loc[:, SELECTED_COLUMNS].copy()
-new_customers_df = pd.read_excel('./data/TEST_CUSTOMER.xlsx')
+
+SELECTED_COLUMNS = ['INV_NO', 'INV_TIME', 'MONTH', 'YEAR', 'CUS_TITLE', 'CUS_NAME', 'CUS_JOB',
+                    'CUS_GENDER', 'CUS_AGE', 'CUS_MOBILE_1', 'CUS_MOBILE_2', 'CUS_MOBILE_3']
+
+new_customers_df = merged_df.loc[df_mask, SELECTED_COLUMNS].copy()
+# new_customers_df = pd.read_excel('./data/TEST_CUSTOMER.xlsx')
 new_customers_df.drop_duplicates(
     subset=['YEAR', 'MONTH', 'CUS_MOBILE_1'], keep='first', inplace=True)
 
+is_adult_mask = ~new_customers_df['CUS_TITLE'].isin(
+    ['الطفل', 'الطفلة'])
+new_customers_df.loc[is_adult_mask,
+                     'CUS_NAME'] = new_customers_df['CUS_NAME'].str.split(' ').str[0]
+new_customers_df.loc[~is_adult_mask,
+                     'CUS_NAME'] = new_customers_df['CUS_NAME'].str.split(' ').str[1]
+
+new_customers_df['CUS_TITLE'] = new_customers_df['CUS_TITLE'].replace(
+    {'السيد': 'الأستاذ', 'السيدة': 'الأستاذة', 'الطفل': 'الأستاذ', 'الطفلة': 'الأستاذ'})
+new_customers_df['CUS_TITLE'] = new_customers_df['CUS_TITLE'].str.replace(
+    'ال', '')
 
 new_customers_df['WHATSAPP_EXISTS'] = False
 new_customers_df['SEND_DATE'] = np.nan
+new_customers_df['RESPONDED'] = np.nan
+new_customers_df['RESPONSE'] = ''
+new_customers_df['NPS'] = np.nan
+
 
 new_customers_df['SEND_DATE'] = pd.to_datetime(new_customers_df['SEND_DATE'])
 new_customers_df['CUS_AGE'] = new_customers_df['CUS_AGE'].replace(
@@ -55,6 +70,7 @@ conn.database = 'phonedb'
 
 cursor.execute(
     """CREATE TABLE IF NOT EXISTS customer_phones (
+        INV_NO INTEGER,
         INV_TIME TIMESTAMP,
         MONTH INTEGER,
         YEAR INTEGER,
@@ -67,7 +83,10 @@ cursor.execute(
         CUS_MOBILE_2 VARCHAR(255),
         CUS_MOBILE_3 VARCHAR(255),
         WHATSAPP_EXISTS INTEGER,
-        SEND_DATE TIMESTAMP
+        SEND_DATE TIMESTAMP,
+        RESPONDED BOOLEAN ,
+        RESPONSE VARCHAR(1024) ,
+        NPS INTEGER
     )"""
 )
 
@@ -91,6 +110,7 @@ df.drop_duplicates(
 df.sort_values(by=['INV_TIME'], ascending=True, inplace=True)
 
 dtype = {
+    'INV_NO': types.INTEGER,
     'INV_TIME': types.TIMESTAMP,
     'MONTH': types.INTEGER,
     'YEAR': types.INTEGER,
@@ -103,7 +123,10 @@ dtype = {
     'CUS_MOBILE_2': types.VARCHAR(255),
     'CUS_MOBILE_3': types.VARCHAR(255),
     'WHATSAPP_EXISTS': types.INTEGER,
-    'SEND_DATE': types.TIMESTAMP
+    'SEND_DATE': types.TIMESTAMP,
+    'RESPONDED': types.BOOLEAN,
+    'RESPONSE': types.VARCHAR(1024),
+    'NPS': types.INTEGER
 }
 
 df.to_sql('customer_phones', phone_engine,

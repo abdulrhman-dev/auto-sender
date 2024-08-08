@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from playwright.sync_api import expect, Page
+import mysql.connector
 messages = []
 
 
@@ -40,7 +41,7 @@ def get_whatsapp_messages(page: Page, return_type=''):
     return messages
 
 
-def get_message(row: pd.Series, unparsed_message: str):
+def format_message(row: pd.Series, unparsed_message: str):
     message = unparsed_message
 
     for match in re.finditer(r'{{\s*(?P<column_name>\w+)\s*}}', unparsed_message):
@@ -49,3 +50,31 @@ def get_message(row: pd.Series, unparsed_message: str):
         message = message.replace(match.group(0), value, 1)
 
     return message
+
+
+def update_send_status(data, cursor: mysql.connector.connect, conn: mysql.connector.connect):
+    update_query = """
+                    UPDATE phonedb.customer_phones 
+                    SET WHATSAPP_EXISTS = %s, SEND_DATE = %s
+                    WHERE (MONTH = %s AND YEAR = %s AND CUS_MOBILE_1 = %s)
+                """
+    cursor.execute(update_query, (data['WHATASAPP_EXISTS'],
+                                  data['SEND_DATE'], data['MONTH'], data['YEAR'], data['CUS_MOBILE_1']))
+    conn.commit()
+
+
+def update_nps(data, cursor: mysql.connector.connect, conn: mysql.connector.connect):
+    update_query = """
+                    UPDATE phonedb.customer_phones 
+                    SET RESPONDED = %s, RESPONSE = %s, NPS = %s
+                    WHERE (MONTH = %s AND YEAR = %s AND CUS_MOBILE_1 = %s)
+                """
+    cursor.execute(update_query,
+                   (
+                       data['RESPONDED'],
+                       data['RESPONSE'], data['NPS'],
+                       data['MONTH'], data['YEAR'],
+                       data['CUS_MOBILE_1']
+                   )
+                   )
+    conn.commit()
