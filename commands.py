@@ -148,23 +148,25 @@ def store_nps(browser: BrowserContext, args):
 
         print(f'Getting NPS Score for {contact_name.text_content()}')
 
-        messages = get_whatsapp_messages(page, 'in')
-
-        if len(messages) == 0:
-            data = {
-                'RESPONDED': 0,
-                'RESPONSE': None,
-                'NPS': None,
-                'MONTH': MONTH,
-                'YEAR': YEAR,
-                'CUS_MOBILE_1': row['CUS_MOBILE_1']
-            }
-            update_nps(data, cursor, conn)
+        messages = get_whatsapp_messages(page, '')
 
         for i in reversed(range(len(messages))):
             message = messages[i]
 
-            matches = re.findall(r'\d+', message['content'])
+            if (message['sender'] == 'out'):
+                data = {
+                    'RESPONDED': 0,
+                    'RESPONSE': None,
+                    'NPS': None,
+                    'MONTH': MONTH,
+                    'YEAR': YEAR,
+                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
+                }
+                update_nps(data, cursor, conn)
+                break
+
+            matches = re.findall(
+                r'([0-9]+|[\u0660-\u0669]+)', message['content'])
 
             if matches:
                 nps = min([int(match) for match in matches])
@@ -181,16 +183,6 @@ def store_nps(browser: BrowserContext, args):
                 update_nps(data, cursor, conn)
                 break
 
-            if i == 0:
-                data = {
-                    'RESPONDED': 0,
-                    'RESPONSE': messages[0]['content'],
-                    'NPS': None,
-                    'MONTH': MONTH,
-                    'YEAR': YEAR,
-                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
-                }
-                update_nps(data, cursor, conn)
         page.wait_for_timeout(WAIT_TIME)
 
     conn.commit()

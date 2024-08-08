@@ -40,7 +40,7 @@ new_customers_df.loc[~is_adult_mask,
                      'CUS_NAME'] = new_customers_df['CUS_NAME'].str.split(' ').str[1]
 
 new_customers_df['CUS_TITLE'] = new_customers_df['CUS_TITLE'].replace(
-    {'السيد': 'الأستاذ', 'السيدة': 'الأستاذة', 'الطفل': 'الأستاذ', 'الطفلة': 'الأستاذ'})
+    {'السيد': 'الأستاذ', 'السيدة': 'الأستاذة', 'الطفل': 'الأستاذ', 'الطفلة': 'الأستاذ', 'الأنسة': 'الأستاذة', 'الحاجة': 'الأستاذة', 'العميد': 'الأستاذ', 'النائب': 'الأستاذ', 'الحاج': 'الأستاذ', 'المقدم': 'الأستاذ', 'العقيد': 'الأستاذ', 'الملازم': 'الأستاذ'})
 new_customers_df['CUS_TITLE'] = new_customers_df['CUS_TITLE'].str.replace(
     'ال', '')
 

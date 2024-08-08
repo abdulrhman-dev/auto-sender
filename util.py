@@ -2,6 +2,7 @@ import pandas as pd
 import re
 from playwright.sync_api import expect, Page
 import mysql.connector
+import json
 messages = []
 
 
@@ -42,11 +43,21 @@ def get_whatsapp_messages(page: Page, return_type=''):
 
 
 def format_message(row: pd.Series, unparsed_message: str):
+    with open('./extra_text.json', encoding='utf8') as f:
+        extra_text = json.load(f)
     message = unparsed_message
 
     for match in re.finditer(r'{{\s*(?P<column_name>\w+)\s*}}', unparsed_message):
         match_groups = match.groupdict()
-        value = row[match_groups['column_name']]
+        column_name = match_groups['column_name']
+        if column_name in extra_text:
+            extra_column = extra_text[column_name]
+            if (isinstance(extra_text['TEXT_1'], list)):
+                value = extra_column[0 if row['CUS_GENDER'] == 'Male' else 1]
+            else:
+                value = extra_column
+        else:
+            value = row[column_name]
         message = message.replace(match.group(0), value, 1)
 
     return message
