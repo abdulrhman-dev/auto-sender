@@ -12,7 +12,7 @@ app = typer.Typer()
 def initilize_browser(func, args):
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
-            getenv('USER_DATE_LOCATION'), headless=False)
+            getenv('USER_DATA_LOCATION'), headless=False)
         func(browser, args)
 
 

@@ -66,6 +66,8 @@ def send_messages(browser: BrowserContext, args):
                 'MONTH': MONTH
             }
             update_send_status(data, cursor, conn)
+            page.wait_for_timeout(WAIT_TIME)
+            continue
 
         X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
@@ -138,6 +140,8 @@ def store_nps(browser: BrowserContext, args):
 
         if (invalid_number is True):
             print(f'{row['CUS_MOBILE_1']} is an invalid phone number')
+            page.wait_for_timeout(WAIT_TIME)
+            continue
 
         X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
