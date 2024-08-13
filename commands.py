@@ -50,12 +50,13 @@ def send_messages(browser: BrowserContext, args):
         page.goto(send_url + send_params)
 
         expect(page.locator(
-            '//*[@id="app"]/div/div[2]/div[3]/header/div[1]/div/img')).to_be_visible(timeout=50000)
+            '//div[@id="side"]')).to_be_visible(timeout=50000)
         expect(page.locator(
             'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
+        page.wait_for_timeout(1000)
         invalid_number = page.locator(
             '//div[text()="Phone number shared via url is invalid."]').is_visible(timeout=2500)
-
+        print(invalid_number)
         if (invalid_number is True):
             print(f'{row['CUS_MOBILE_1']} is an invalid phone number')
             data = {
@@ -132,7 +133,7 @@ def store_nps(browser: BrowserContext, args):
         page.goto(send_url + send_params)
 
         expect(page.locator(
-            '//*[@id="app"]/div/div[2]/div[3]/header/div[1]/div/img')).to_be_visible(timeout=50000)
+            '//div[@id="side"]')).to_be_visible(timeout=50000)
         expect(page.locator(
             'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
         invalid_number = page.locator(
@@ -153,7 +154,17 @@ def store_nps(browser: BrowserContext, args):
         print(f'Getting NPS Score for {contact_name.text_content()}')
 
         messages = get_whatsapp_messages(page, '')
-
+        if(len(messages) == 0):
+           data = {
+                    'RESPONDED': 0,
+                    'RESPONSE': None,
+                    'NPS': None,
+                    'MONTH': MONTH,
+                    'YEAR': YEAR,
+                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
+            }
+           update_nps(data, cursor, conn)
+             
         for i in reversed(range(len(messages))):
             message = messages[i]
 

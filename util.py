@@ -7,8 +7,11 @@ messages = []
 
 
 def get_whatsapp_messages(page: Page, return_type=''):
-    expect(page.locator(
-        'xpath=//*[@id="main"]/div[3]/div/div[2]/div[2]/div/span')).not_to_be_visible(timeout=2000)
+    try:
+        expect(page.locator(
+            'xpath=//*[@id="main"]/div[3]/div/div[2]/div[2]/div/span')).not_to_be_visible(timeout=7500)
+    except:
+        print("Had a problem with finding whatsapp's loading animation")
     page.keyboard.press('Home')
     page.wait_for_timeout(1500)
 

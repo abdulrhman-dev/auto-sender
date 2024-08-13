@@ -7,28 +7,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# engine = create_engine(getenv('SAVE_CON'))
+engine = create_engine(getenv('SAVE_CON'))
 
-# customers_df = pd.read_sql('SELECT * FROM workdb.customers', engine)
-# invoices_df = pd.read_sql('SELECT * FROM workdb.invoices', engine)
+customers_df = pd.read_sql('SELECT * FROM workdb.customers', engine)
+invoices_df = pd.read_sql('SELECT * FROM workdb.invoices', engine)
 
-# merged_df = pd.merge(customers_df, invoices_df, left_on='CUS_NO',
-#                      right_on='INV_CUS_NO', how='left')
+merged_df = pd.merge(customers_df, invoices_df, left_on='CUS_NO',
+                     right_on='INV_CUS_NO', how='left')
 
-# merged_df['MONTH'] = merged_df['INV_TIME'].dt.month
-# merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
-
-
-# mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
-#     'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
-# df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
+merged_df['MONTH'] = merged_df['INV_TIME'].dt.month
+merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
 
 
-# SELECTED_COLUMNS = ['INV_NO', 'INV_TIME', 'MONTH', 'YEAR', 'CUS_TITLE', 'CUS_NAME', 'CUS_JOB',
-#                     'CUS_GENDER', 'CUS_AGE', 'CUS_MOBILE_1', 'CUS_MOBILE_2', 'CUS_MOBILE_3']
+mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
+    'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
+df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
 
-# new_customers_df = merged_df.loc[df_mask, SELECTED_COLUMNS].copy()
-new_customers_df = pd.read_excel('./data/TEST_CUSTOMER.xlsx')
+
+SELECTED_COLUMNS = ['INV_NO', 'INV_TIME', 'MONTH', 'YEAR', 'CUS_TITLE', 'CUS_NAME', 'CUS_JOB',
+                    'CUS_GENDER', 'CUS_AGE', 'CUS_MOBILE_1', 'CUS_MOBILE_2', 'CUS_MOBILE_3']
+
+new_customers_df = merged_df.loc[df_mask, SELECTED_COLUMNS].copy()
+# new_customers_df = pd.read_excel('./data/TEST_CUSTOMER.xlsx')
 new_customers_df.drop_duplicates(
     subset=['YEAR', 'MONTH', 'CUS_MOBILE_1'], keep='first', inplace=True)
 

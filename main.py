@@ -6,7 +6,7 @@ from typing import Optional
 from commands import send_messages, store_nps
 load_dotenv()
 
-app = typer.Typer()
+app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
 
 def initilize_browser(func, args):
