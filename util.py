@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from playwright.sync_api import expect, Page
+from pandas import DataFrame, ExcelWriter
 import mysql.connector
 import json
 messages = []
@@ -92,3 +93,19 @@ def update_nps(data, cursor: mysql.connector.connect, conn: mysql.connector.conn
                    )
                    )
     conn.commit()
+
+
+def to_table(df: DataFrame, sheet_name: str, writer: ExcelWriter):
+    df.to_excel(writer, sheet_name=sheet_name,
+                startrow=1, header=False, index=False)
+
+    worksheet = writer.sheets[sheet_name]
+
+    (max_row, max_col) = df.shape
+
+    column_settings = [{"header": column} for column in df.columns]
+
+    worksheet.add_table(0, 0, max_row, max_col - 1,
+                        {'columns': column_settings})
+
+    worksheet.set_column(0, max_col - 1, 12)
