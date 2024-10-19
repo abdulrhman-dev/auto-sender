@@ -52,10 +52,10 @@ def execute(browser: BrowserContext, args):
             '//div[@id="side"]')).to_be_visible(timeout=50000)
         expect(page.locator(
             'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(1750)
         invalid_number = page.locator(
             '//div[text()="Phone number shared via url is invalid."]').is_visible(timeout=2500)
-        print(invalid_number)
+        # print(invalid_number)
         if (invalid_number is True):
             print(f'{row['CUS_MOBILE_1']} is an invalid phone number')
             data = {
@@ -68,7 +68,7 @@ def execute(browser: BrowserContext, args):
             update_send_status(data, cursor, conn)
             page.wait_for_timeout(WAIT_TIME)
             continue
-
+        
         X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
         contact_name = page.locator(X_CONTACT_NAME)

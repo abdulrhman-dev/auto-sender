@@ -21,8 +21,11 @@ def execute(args):
     if (df.loc[df['RESPONDED'] == 1, 'CUS_MOBILE_1'].count() == 0):
         raise Exception('No customer has replayed yet')
 
-    status = f'For {df['CUS_MOBILE_1'].count(
-    )} out of {df.loc[~df['SEND_DATE'].isna(), 'CUS_MOBILE_1'].count()} customers'
+    whatsapp_sent_count = df.loc[~df['SEND_DATE'].isna(), 'CUS_MOBILE_1'].count()
+    all_customers_count = df['CUS_MOBILE_1'].count(
+    )
+    
+    status = f'For {whatsapp_sent_count} out of {all_customers_count} customers'
     report = pd.DataFrame(
         columns=pd.MultiIndex.from_tuples([('RESPONSE', 'COUNT'), ('RESPONSE', 'PERCENTAGE'), ('NPS', 'AVG')]))
 
@@ -34,8 +37,11 @@ def execute(args):
                ] = '{:.0%}'.format(response_percentage)
     report.loc[status, [('NPS', 'AVG')]] = df['NPS'].mean()
 
-    report_path = os.path.join(os.getcwd(), 'report')
-    if (not os.path.exists(report_path)):
-        os.makedirs(report_path)
-    report.to_excel(
-        os.path.join(report_path, f'{date.today().strftime('%Y%m-%d')}response_report.xlsx'))
+    folder_path = os.path.join(os.getcwd(), 'report')
+    if (not os.path.exists(folder_path)):
+        os.makedirs(folder_path)
+    
+    report_path = os.path.join(folder_path, f'{date.today().strftime('%Y%m-%d')}response_report.xlsx')
+    
+    report.to_excel(report_path)
+    os.startfile(report_path)
