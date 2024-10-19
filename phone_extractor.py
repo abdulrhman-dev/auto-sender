@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
 import mysql.connector
+import json
 from sqlalchemy import create_engine, types
 from os import getenv
 from dotenv import load_dotenv
+
+with open("./blacklist.json") as f:
+    blacklist = json.load(f)
 
 load_dotenv()
 
@@ -20,7 +24,7 @@ merged_df['YEAR'] = merged_df['INV_TIME'].dt.year
 
 
 mobile_mask = ~(merged_df['CUS_MOBILE_1'].str.startswith(
-    'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '')
+    'UnknownPhone')) & (merged_df['CUS_MOBILE_1'] != '') & (~merged_df['CUS_MOBILE_1'].isin(blacklist['PHONE_NUMBERS']))
 df_mask = (merged_df['INV_CANCEL'] == 0) & mobile_mask
 
 

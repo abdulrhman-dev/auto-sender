@@ -165,6 +165,7 @@ data
 pyvenv.cfg
 PyWhatKit_DB.txt
 archive
-settings.json
+extra_text.json
+blacklist.json
 report 
 edit
