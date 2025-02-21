@@ -7,20 +7,22 @@ from playwright.sync_api import BrowserContext, expect
 load_dotenv()
 
 
-def execute(browser: BrowserContext, _):
+def execute(browser: BrowserContext, args):
     with open('./data/message_local.txt', 'r', encoding='utf-8') as f:
         unparsed_message = f.read()
 
     WAIT_TIME = int(getenv('WAIT_TIME'))
 
-    df = pd.read_excel('./data/phones.xlsx')
-
+    df = pd.read_excel('./data/phones_local.xlsx')
     df['PHONE'] = df['PHONE'].astype(str)
+    df['STATUS'] = df['STATUS'].notna().astype(bool)    
+    working_df = df[df['STATUS'] != True].head(args['COUNT'])
+
 
     page = browser.new_page()
     send_url = 'https://web.whatsapp.com/send?'
 
-    for index, row in df.iterrows():
+    for index, row in working_df.iterrows():
         message = format_message(row, unparsed_message)
 
         send_params = parse.urlencode(
@@ -69,4 +71,4 @@ def execute(browser: BrowserContext, _):
 
         page.wait_for_timeout(WAIT_TIME)
 
-    df.to_excel('./data/phones.xlsx', index=False)
+    df.to_excel('./data/phones_local.xlsx', index=False)

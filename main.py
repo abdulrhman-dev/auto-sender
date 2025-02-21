@@ -28,8 +28,11 @@ def send(month: int, year: Optional[int] = datetime.now().year,  count: Optional
 
 
 @app.command()
-def send_local():
-    initilize_browser(send_local_command.execute, {})
+def send_local(count: Optional[int] = 20):
+    args = {
+        'COUNT': count
+    }
+    initilize_browser(send_local_command.execute, args)
 
 
 @app.command()
