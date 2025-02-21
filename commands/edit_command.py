@@ -18,6 +18,8 @@ def execute(args):
 
     df = df[(df['YEAR'] == YEAR) & (df['MONTH'] == MONTH)].copy()
 
+    df.sort_values(by='INV_TIME', inplace=True)
+    
     edit_path = os.path.join(os.getcwd(), 'edit')
     if (not os.path.exists(edit_path)):
         os.makedirs(edit_path)
