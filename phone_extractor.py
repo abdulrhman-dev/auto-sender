@@ -72,7 +72,7 @@ new_customers_df['CUS_MOBILE_1'] = pd.to_numeric(
 
 new_customers_df['SEND_DATE'] = pd.to_datetime(new_customers_df['SEND_DATE'])
 new_customers_df['CUS_AGE'] = new_customers_df['CUS_AGE'].replace(
-    '', np.nan).astype(float)
+    '', np.nan).replace(' ', np.nan).astype(float)
 
 new_customers_df.set_index(['YEAR', 'MONTH', 'CUS_MOBILE_1'], inplace=True)
 

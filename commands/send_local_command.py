@@ -14,9 +14,13 @@ def execute(browser: BrowserContext, args):
     WAIT_TIME = int(getenv('WAIT_TIME'))
 
     df = pd.read_excel('./data/phones_local.xlsx')
+    
+    print(df)
+    
     df['PHONE'] = df['PHONE'].astype(str)
-    df['STATUS'] = df['STATUS'].notna().astype(bool)    
     working_df = df[df['STATUS'] != True].head(args['COUNT'])
+    
+    print(working_df)
 
 
     page = browser.new_page()
@@ -27,8 +31,6 @@ def execute(browser: BrowserContext, args):
 
         send_params = parse.urlencode(
             {'phone': row['PHONE'], 'text': message})
-
-        print(row['PHONE'], send_url + send_params)
 
         page.goto(send_url + send_params)
 
@@ -46,7 +48,7 @@ def execute(browser: BrowserContext, args):
         if (invalid_number is True):
             print(f'{row['PHONE']} is an invalid phone number')
 
-            df.loc[index, 'STATUS'] = True
+            df.loc[index, 'STATUS'] = 1
 
             page.wait_for_timeout(WAIT_TIME)
             continue
@@ -67,7 +69,7 @@ def execute(browser: BrowserContext, args):
         print(f'Sent message to {contact_name.text_content()}')
         print(f'Waiting...')
 
-        df.loc[index, 'STATUS'] = True
+        df.loc[index, 'STATUS'] = 1
 
         page.wait_for_timeout(WAIT_TIME)
 

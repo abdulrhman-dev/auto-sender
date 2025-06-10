@@ -69,7 +69,7 @@ def execute(browser: BrowserContext, args):
             page.wait_for_timeout(WAIT_TIME)
             continue
         
-        X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/span'
+        X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
         contact_name = page.locator(X_CONTACT_NAME)
         page.wait_for_timeout(1000)
