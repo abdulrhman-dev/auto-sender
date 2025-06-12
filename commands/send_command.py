@@ -37,19 +37,32 @@ def execute(browser: BrowserContext, args):
     )
 
     cursor = conn.cursor()
-
     page = browser.new_page()
-    send_url = 'https://web.whatsapp.com/send?'
+
+    page.goto("https://web.whatsapp.com/")
+
+    main_url = 'https://wa.me/'
 
     for _, row in df.iterrows():
         message = format_message(row, unparsed_message)
 
-        send_params = parse.urlencode(
-            {'phone': row['CUS_MOBILE_1'], 'text': message})
-        page.goto(send_url + send_params)
+        send_params = row['CUS_MOBILE_1'] + '?' + parse.urlencode(
+            {'text': message})
+
+        send_url = main_url + send_params
 
         expect(page.locator(
-            '//div[@id="side"]')).to_be_visible(timeout=50000)
+            '//div[@id="side"]')).to_be_visible(timeout=100000)
+
+        page.evaluate(f"""
+                    var a = document.createElement('a');
+                    var link = document.createTextNode("hiding");
+                    a.appendChild(link);
+                    a.href = "{send_url}";
+                    document.head.appendChild(a);
+                    a.click();
+        """
+                      )
         expect(page.locator(
             'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
         page.wait_for_timeout(1750)
@@ -68,7 +81,7 @@ def execute(browser: BrowserContext, args):
             update_send_status(data, cursor, conn)
             page.wait_for_timeout(WAIT_TIME)
             continue
-        
+
         X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
         contact_name = page.locator(X_CONTACT_NAME)
