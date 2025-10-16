@@ -17,12 +17,13 @@ def get_whatsapp_messages(page: Page, return_type=''):
     page.wait_for_timeout(1500)
 
     messages = []
-
-    for row in page.locator('xpath=//div[@role="application"]//div[@role="row"]').all():
+    rows = page.locator('xpath=//*[@id="main"]/div[2]/div/div[2]//div[@role="row"]').all()
+    for row in rows:
         sender = 'out'
 
-        if 'message-in' in row.locator('xpath=/div/div').get_attribute('class'):
+        if 'message-in' in row.locator('xpath=/div/div/div/div').get_attribute('class'):
             sender = 'in'
+            
 
         if (return_type != '' and sender != return_type):
             continue

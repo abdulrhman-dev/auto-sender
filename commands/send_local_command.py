@@ -40,12 +40,12 @@ def execute(browser: BrowserContext, args):
             '//div[@id="side"]')).to_be_visible(timeout=50000)
 
         page.evaluate(f"""
-                    var a = document.createElement('a');
+                    var wa_link_auto = document.createElement('a');
                     var link = document.createTextNode("hiding");
-                    a.appendChild(link);
-                    a.href = "{send_url}";
-                    document.head.appendChild(a);
-                    a.click();
+                    wa_link_auto.appendChild(link);
+                    wa_link_auto.href = "{send_url}";
+                    document.head.appendChild(wa_link_auto);
+                    wa_link_auto.click();
         """
                       )
 

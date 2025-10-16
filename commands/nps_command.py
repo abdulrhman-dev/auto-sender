@@ -9,6 +9,7 @@ import re
 import pandas as pd
 from playwright.sync_api import BrowserContext, expect
 import sys
+import json
 sys.path.append('../')
 
 
@@ -44,9 +45,13 @@ def execute(browser: BrowserContext, args):
     page.goto("https://web.whatsapp.com/")
 
     main_url = 'https://wa.me/'
-
-    for _, row in df.iterrows():
-
+    rows = df.iterrows()
+    
+    total = 0
+    recorded = 0
+    
+    for _, row in rows:
+        total += 1
         send_params = row['CUS_MOBILE_1']
 
         send_url = main_url + send_params
@@ -57,12 +62,12 @@ def execute(browser: BrowserContext, args):
             'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
 
         page.evaluate(f"""
-                    var a = document.createElement('a');
+                    var wa_link_auto = document.createElement('a');
                     var link = document.createTextNode("hiding");
-                    a.appendChild(link);
-                    a.href = "{send_url}";
-                    document.head.appendChild(a);
-                    a.click();
+                    wa_link_auto.appendChild(link);
+                    wa_link_auto.href = "{send_url}";
+                    document.head.appendChild(wa_link_auto);
+                    wa_link_auto.click();
         """
                       )
 
@@ -77,13 +82,16 @@ def execute(browser: BrowserContext, args):
         X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/div/span'
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
         contact_name = page.locator(X_CONTACT_NAME)
-        page.wait_for_timeout(1000)
-        messages_container = page.locator('//div[@role="application"]')
+        page.wait_for_timeout(10000)
+        messages_container = page.locator('//*[@id="main"]/div[2]/div')
         messages_container.focus()
 
         print(f'Getting NPS Score for {contact_name.text_content()}')
 
         messages = get_whatsapp_messages(page, '')
+        print(messages)
+
+        
         if (len(messages) == 0):
             data = {
                 'RESPONDED': 0,
@@ -94,20 +102,11 @@ def execute(browser: BrowserContext, args):
                 'CUS_MOBILE_1': row['CUS_MOBILE_1']
             }
             update_nps(data, cursor, conn)
-
+        status = False
         for i in reversed(range(len(messages))):
             message = messages[i]
-
+            
             if (message['sender'] == 'out'):
-                data = {
-                    'RESPONDED': 0,
-                    'RESPONSE': None,
-                    'NPS': None,
-                    'MONTH': MONTH,
-                    'YEAR': YEAR,
-                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
-                }
-                update_nps(data, cursor, conn)
                 break
 
             matches = re.findall(
@@ -115,9 +114,13 @@ def execute(browser: BrowserContext, args):
 
             if matches:
                 nps = min([int(match) for match in matches])
-                if (nps > 10 or nps < 0):
+                if(nps < 0):
                     print(f'recieved number is not a valid NPS, {nps}')
                     continue
+                
+                if(nps > 10):
+                    nps = 10
+                    
                 print(f'Got NPS Score for {contact_name.text_content()}')
                 print(f'NPS = {nps}')
                 data = {
@@ -129,8 +132,21 @@ def execute(browser: BrowserContext, args):
                     'CUS_MOBILE_1': row['CUS_MOBILE_1']
                 }
                 update_nps(data, cursor, conn)
+                status =True
+                recorded += 1
                 break
-
+        if not status:
+            data = {
+                'RESPONDED': 0,
+                'RESPONSE': None,
+                'NPS': None,
+                'MONTH': MONTH,
+                'YEAR': YEAR,
+                'CUS_MOBILE_1': row['CUS_MOBILE_1']
+            }
+            update_nps(data, cursor, conn)
+        print("status: ", status)
+        print(f'NPS RECORD {recorded}/{total}')
         page.wait_for_timeout(WAIT_TIME)
 
     conn.commit()

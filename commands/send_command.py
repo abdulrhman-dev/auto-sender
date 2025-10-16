@@ -55,12 +55,12 @@ def execute(browser: BrowserContext, args):
             '//div[@id="side"]')).to_be_visible(timeout=100000)
 
         page.evaluate(f"""
-                    var a = document.createElement('a');
+                    var wa_link_auto = document.createElement('a');
                     var link = document.createTextNode("hiding");
-                    a.appendChild(link);
-                    a.href = "{send_url}";
-                    document.head.appendChild(a);
-                    a.click();
+                    wa_link_auto.appendChild(link);
+                    wa_link_auto.href = "{send_url}";
+                    document.head.appendChild(wa_link_auto);
+                    wa_link_auto.click();
         """
                       )
         expect(page.locator(
@@ -86,12 +86,12 @@ def execute(browser: BrowserContext, args):
         expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
         contact_name = page.locator(X_CONTACT_NAME)
         page.wait_for_timeout(1000)
-        messages_container = page.locator('//div[@role="application"]')
+        messages_container = page.locator('//*[@id="main"]/div[2]/div')
         messages_container.focus()
 
         print(f'Sending message to {contact_name.text_content()}')
 
-        send_button = page.locator('//button[@aria-label="Send"]')
+        send_button = page.locator('//div[@aria-label="Send"]')
         send_button.click()
 
         print(f'Sent message to {contact_name.text_content()}')
