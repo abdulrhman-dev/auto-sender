@@ -23,10 +23,12 @@ def execute():
     working_month = edit_df['MONTH'].unique()
     working_year = edit_df['YEAR'].unique()
 
-    db_df.drop(db_df[db_df['YEAR'].isin([working_year]) &
+    db_df.drop(db_df[db_df['YEAR'].isin(working_year) &
                db_df['MONTH'].isin(working_month)].index, inplace=True)
-
+   
     save_df = pd.concat([db_df, edit_df])
+    
+
 
     if (sql_db['INV_NO'].count() != save_df['INV_NO'].count()):
         raise Exception('Something went wrong with commiting database changes')

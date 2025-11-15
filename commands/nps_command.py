@@ -95,7 +95,7 @@ def execute(args):
 
             if matches:
                 nps = min([int(match) for match in matches])
-                if (nps > 10 or nps < 0):
+                if (nps < 0):
                     print(f'recieved number is not a valid NPS, {nps}')
                     continue
                 print(f'Got NPS Score for {phone_number}')
