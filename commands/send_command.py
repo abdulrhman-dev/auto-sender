@@ -1,17 +1,17 @@
 from util import format_message, update_send_status
 from urllib import parse
 from datetime import datetime
+import time
 from os import getenv
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 import mysql.connector
-import mysql.connector.cursor
 import pandas as pd
-from playwright.sync_api import BrowserContext, expect
+from waha import send_message
 load_dotenv()
 
 
-def execute(browser: BrowserContext, args):
+def execute(args):
     with open('./data/message.txt', 'r', encoding='utf-8') as f:
         unparsed_message = f.read()
 
@@ -24,7 +24,6 @@ def execute(browser: BrowserContext, args):
     query = f"""
                 SELECT *
                 FROM phonedb.customer_phones
-
                 WHERE (MONTH = {MONTH} AND YEAR = {YEAR} AND SEND_DATE IS NULL)
                 ORDER BY INV_TIME LIMIT {COUNT}
             """
@@ -37,75 +36,37 @@ def execute(browser: BrowserContext, args):
     )
 
     cursor = conn.cursor()
-    page = browser.new_page()
-
-    page.goto("https://web.whatsapp.com/")
-
-    main_url = 'https://wa.me/'
 
     for _, row in df.iterrows():
         message = format_message(row, unparsed_message)
+        phone_number = row['CUS_MOBILE_1']
 
-        send_params = row['CUS_MOBILE_1'] + '?' + parse.urlencode(
-            {'text': message})
+        print(f'Sending message to {phone_number}')
+        res = send_message(phone_number, message)
 
-        send_url = main_url + send_params
-
-        expect(page.locator(
-            '//div[@id="side"]')).to_be_visible(timeout=100000)
-
-        page.evaluate(f"""
-                    var a = document.createElement('a');
-                    var link = document.createTextNode("hiding");
-                    a.appendChild(link);
-                    a.href = "{send_url}";
-                    document.head.appendChild(a);
-                    a.click();
-        """
-                      )
-        expect(page.locator(
-            'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
-        page.wait_for_timeout(1750)
-        invalid_number = page.locator(
-            '//div[text()="Phone number shared via url is invalid."]').is_visible(timeout=2500)
-        # print(invalid_number)
-        if (invalid_number is True):
-            print(f'{row['CUS_MOBILE_1']} is an invalid phone number')
+        if (res.status_code != 201):
+            print(f'Faild to send message to {phone_number}')
             data = {
                 'WHATASAPP_EXISTS': 0,
                 'SEND_DATE': datetime.now(),
-                'CUS_MOBILE_1': row['CUS_MOBILE_1'],
+                'CUS_MOBILE_1': phone_number,
                 'YEAR': YEAR,
                 'MONTH': MONTH
             }
             update_send_status(data, cursor, conn)
-            page.wait_for_timeout(WAIT_TIME)
+            time.sleep(WAIT_TIME)
             continue
-
-        X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/div/span'
-        expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
-        contact_name = page.locator(X_CONTACT_NAME)
-        page.wait_for_timeout(1000)
-        messages_container = page.locator('//div[@role="application"]')
-        messages_container.focus()
-
-        print(f'Sending message to {contact_name.text_content()}')
-
-        send_button = page.locator('//button[@aria-label="Send"]')
-        send_button.click()
-
-        print(f'Sent message to {contact_name.text_content()}')
-        print(f'Waiting...')
 
         data = {
             'WHATASAPP_EXISTS': 1,
             'SEND_DATE': datetime.now(),
-            'CUS_MOBILE_1': row['CUS_MOBILE_1'],
+            'CUS_MOBILE_1': phone_number,
             'YEAR': YEAR,
             'MONTH': MONTH
         }
         update_send_status(data, cursor, conn)
-        page.wait_for_timeout(WAIT_TIME)
+        print(f'Successfully sent message')
+        time.sleep(WAIT_TIME)
 
     conn.commit()
     cursor.close()

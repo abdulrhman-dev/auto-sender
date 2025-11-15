@@ -1,21 +1,20 @@
-from util import update_nps, get_whatsapp_messages
-from urllib import parse
+from util import update_nps
 from dotenv import load_dotenv
 from os import getenv
 from sqlalchemy import create_engine
 import mysql.connector
-import mysql.connector.cursor
 import re
 import pandas as pd
-from playwright.sync_api import BrowserContext, expect
 import sys
+from waha import get_messages
+import time
 sys.path.append('../')
 
 
 load_dotenv()
 
 
-def execute(browser: BrowserContext, args):
+def execute(args):
     MONTH = args['MONTH']
     YEAR = args['YEAR']
     COUNT = args['COUNT']
@@ -25,7 +24,7 @@ def execute(browser: BrowserContext, args):
     query = f"""
         SELECT *
         FROM phonedb.customer_phones
-        WHERE (MONTH = {MONTH} AND YEAR = {YEAR} AND WHATSAPP_EXISTS = 1 AND RESPONDED IS NULL)
+        WHERE (MONTH = {MONTH} AND YEAR = {YEAR} AND WHATSAPP_EXISTS = 1)
         ORDER BY INV_TIME LIMIT {COUNT}
     """
 
@@ -39,51 +38,34 @@ def execute(browser: BrowserContext, args):
 
     cursor = conn.cursor()
 
-    page = browser.new_page()
-
-    page.goto("https://web.whatsapp.com/")
-
-    main_url = 'https://wa.me/'
+    recorded = 0
+    total = 0
 
     for _, row in df.iterrows():
+        total += 1
+        phone_number = row['CUS_MOBILE_1']
+        res = get_messages(phone_number)
+        print(f'Getting NPS Score for {phone_number}')
 
-        send_params = row['CUS_MOBILE_1']
-
-        send_url = main_url + send_params
-
-        expect(page.locator(
-            '//div[@id="side"]')).to_be_visible(timeout=50000)
-        expect(page.locator(
-            'xpath=//div[text()="Starting chat"]')).not_to_be_visible(timeout=50000)
-
-        page.evaluate(f"""
-                    var a = document.createElement('a');
-                    var link = document.createTextNode("hiding");
-                    a.appendChild(link);
-                    a.href = "{send_url}";
-                    document.head.appendChild(a);
-                    a.click();
-        """
-                      )
-
-        invalid_number = page.locator(
-            '//div[text()="Phone number shared via url is invalid."]').is_visible(timeout=2500)
-
-        if (invalid_number is True):
-            print(f'{row['CUS_MOBILE_1']} is an invalid phone number')
-            page.wait_for_timeout(WAIT_TIME)
+        if (res.status_code != 200):
+            print(
+                f'Failed to get NPS score for {phone_number}')
+            data = {
+                'RESPONDED': 0,
+                'RESPONSE': None,
+                'NPS': None,
+                'MONTH': MONTH,
+                'YEAR': YEAR,
+                'CUS_MOBILE_1': phone_number
+            }
+            update_nps(data, cursor, conn)
+            time.sleep(WAIT_TIME)
+            print(f'recorded {recorded} out of {total}')
             continue
 
-        X_CONTACT_NAME = '//*[@id="main"]/header/div[2]/div/div/div/div/span'
-        expect(page.locator(X_CONTACT_NAME)).to_be_visible(timeout=50000)
-        contact_name = page.locator(X_CONTACT_NAME)
-        page.wait_for_timeout(1000)
-        messages_container = page.locator('//div[@role="application"]')
-        messages_container.focus()
+        messages = res.json()
+        found_nps = False
 
-        print(f'Getting NPS Score for {contact_name.text_content()}')
-
-        messages = get_whatsapp_messages(page, '')
         if (len(messages) == 0):
             data = {
                 'RESPONDED': 0,
@@ -91,47 +73,51 @@ def execute(browser: BrowserContext, args):
                 'NPS': None,
                 'MONTH': MONTH,
                 'YEAR': YEAR,
-                'CUS_MOBILE_1': row['CUS_MOBILE_1']
+                'CUS_MOBILE_1': phone_number
             }
             update_nps(data, cursor, conn)
 
-        for i in reversed(range(len(messages))):
-            message = messages[i]
-
-            if (message['sender'] == 'out'):
+        for message in messages:
+            if (message['fromMe']):
                 data = {
                     'RESPONDED': 0,
                     'RESPONSE': None,
                     'NPS': None,
                     'MONTH': MONTH,
                     'YEAR': YEAR,
-                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
+                    'CUS_MOBILE_1': phone_number
                 }
                 update_nps(data, cursor, conn)
                 break
 
             matches = re.findall(
-                r'([0-9]+|[\u0660-\u0669]+)', message['content'])
+                r'([0-9]+|[\u0660-\u0669]+)', message['body'])
 
             if matches:
                 nps = min([int(match) for match in matches])
                 if (nps > 10 or nps < 0):
                     print(f'recieved number is not a valid NPS, {nps}')
                     continue
-                print(f'Got NPS Score for {contact_name.text_content()}')
+                print(f'Got NPS Score for {phone_number}')
                 print(f'NPS = {nps}')
                 data = {
                     'RESPONDED': 1,
-                    'RESPONSE': message['content'],
+                    'RESPONSE': message['body'],
                     'NPS': nps,
                     'MONTH': MONTH,
                     'YEAR': YEAR,
-                    'CUS_MOBILE_1': row['CUS_MOBILE_1']
+                    'CUS_MOBILE_1': phone_number
                 }
                 update_nps(data, cursor, conn)
+                recorded += 1
+                found_nps = True
                 break
 
-        page.wait_for_timeout(WAIT_TIME)
+        if (not found_nps):
+            print(f'Failed to get NPS score for {phone_number}')
+        print(f'recorded {recorded} out of {total}')
+
+        time.sleep(WAIT_TIME)
 
     conn.commit()
     cursor.close()

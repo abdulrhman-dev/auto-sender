@@ -1,20 +1,12 @@
 from dotenv import load_dotenv
 from os import getenv
-from playwright.sync_api import sync_playwright
 import typer
 from typing import Optional
-from commands import send_command, nps_command, report_command, edit_command, commit_command, send_local_command
+from commands import send_command, nps_command, report_command, edit_command, commit_command
 from datetime import datetime
 
 load_dotenv()
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
-
-
-def initilize_browser(func, args):
-    with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            getenv('USER_DATA_LOCATION'), headless=False)
-        func(browser, args)
 
 
 @app.command()
@@ -24,15 +16,7 @@ def send(month: int, year: Optional[int] = datetime.now().year,  count: Optional
         'YEAR': year,
         'COUNT': count
     }
-    initilize_browser(send_command.execute, args)
-
-
-@app.command()
-def send_local(count: Optional[int] = 20):
-    args = {
-        'COUNT': count
-    }
-    initilize_browser(send_local_command.execute, args)
+    send_command.execute(args)
 
 
 @app.command()
@@ -42,7 +26,7 @@ def nps(month: int, year: Optional[int] = datetime.now().year,  count: Optional[
         'YEAR': year,
         'COUNT': count
     }
-    initilize_browser(nps_command.execute, args)
+    nps_command.execute(args)
 
 
 @app.command()

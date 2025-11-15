@@ -1,49 +1,8 @@
 import pandas as pd
 import re
-from playwright.sync_api import expect, Page
 from pandas import DataFrame, ExcelWriter
 import mysql.connector
 import json
-messages = []
-
-
-def get_whatsapp_messages(page: Page, return_type=''):
-    try:
-        expect(page.locator(
-            'xpath=//*[@id="main"]/div[3]/div/div[2]/div[2]/div/span')).not_to_be_visible(timeout=7500)
-    except:
-        print("Had a problem with finding whatsapp's loading animation")
-    page.keyboard.press('Home')
-    page.wait_for_timeout(1500)
-
-    messages = []
-
-    for row in page.locator('xpath=//div[@role="application"]//div[@role="row"]').all():
-        sender = 'out'
-
-        if 'message-in' in row.locator('xpath=/div/div').get_attribute('class'):
-            sender = 'in'
-
-        if (return_type != '' and sender != return_type):
-            continue
-
-        inner_message_parts = row.locator(
-            'xpath=//span[@class="_ao3e selectable-text copyable-text"]').all()
-
-        inner_message = ''
-        for inner_message_part in inner_message_parts:
-            if (inner_message == ""):
-                inner_message = inner_message_part.text_content()
-                continue
-
-            inner_message += '\n' + inner_message_part.text_content()
-
-        if (inner_message == ''):
-            continue
-
-        messages.append(
-            {'content': inner_message, 'sender': sender})
-    return messages
 
 
 def format_message(row: pd.Series, unparsed_message: str):
